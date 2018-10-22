@@ -8,9 +8,10 @@ import colorlog
 import argparse
 import time
 import multiprocessing
+import hashlib
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from subprocess import call, STDOUT
+from subprocess import Popen, STDOUT, PIPE
 from PyPDF2 import PdfFileMerger
 
 logger = None
@@ -42,23 +43,34 @@ def init_logging():
 
 def init_parser():
     parser = argparse.ArgumentParser(description="Recompile only changed TeX slides.")
-    parser.add_argument("--out", "-o", nargs="?", default="slide.pdf")
-    parser.add_argument("--compiler", "-c", nargs="?", default="latexrun")
+    parser.add_argument("--out", "-o", nargs="?", default="preview.pdf")
+    parser.add_argument("--compiler", "-c", nargs="?", default="pdflatex")
     parser.add_argument("--ignore-errors", "-i", action="store_true", dest="ignore_errors", default=False)
-    parser.add_argument("--prefix", "-p", nargs="?", default="_slide_")
+    parser.add_argument("--prefix", "-p", nargs="?", default="beamer.out")
     parser.add_argument("--force", action="store_true", default=False)
     parser.add_argument("--watch", action="store_true", default=False)
     parser.add_argument("--smp", nargs="?", default=multiprocessing.cpu_count())
+    parser.add_argument("--compiler-option", nargs="*", default=[], dest="compiler_option")
+    parser.add_argument("--runs", "-r", nargs='?', default=1)
     parser.add_argument("slides")
 
     return parser
 
 
-def has_changed(content, fname):
+def slide_hash(content):
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
+def has_changed(content, fname, pdf):
     try:
-        return content != open(fname).read()
+        diff = content != open(fname).read()
+        if diff:
+            return True
+        if not os.path.exists(pdf):
+            return True
     except:
         return True
+    return False
 
 
 class AbortException(Exception):
@@ -154,9 +166,21 @@ def compile_slide(arg):
         error("Could not write %s" % tex)
     if os.path.isfile(pdf):
         os.remove(pdf)
-    call([args.compiler, tex], stdout=FNULL, stderr=STDOUT)
+
+    compile_command = [args.compiler, "--output-directory", args.prefix, "-halt-on-error"] + args.compiler_option + [tex]
+    logger.debug(compile_command)
+    log = ""
+    for i in range(int(args.runs)):
+        p = Popen(compile_command, stdout=PIPE, stderr=STDOUT)
+        out, err = p.communicate()
+        if out:
+            try:
+                log += out.decode("utf-8")
+            except:
+                pass
     if not os.path.isfile(pdf):
         logger.warning("Could not compile slide %s" % tex)
+        logger.warning(log)
         try:
             with open(tex, "w") as out:
                 out.write("")
@@ -164,11 +188,11 @@ def compile_slide(arg):
             error("Could not write %s" % tex)
 
 
-def merge_slides(count, slide_name):
+def merge_slides(hashes, slide_name):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         merger = PdfFileMerger(strict=False)
-        for i in range(count):
+        for i in hashes:
             slide_pdf = (slide_name % i).replace(".tex", ".pdf")
             try:
                 merger.append(open(slide_pdf, "rb"))
@@ -183,7 +207,7 @@ def merge_slides(count, slide_name):
 
 
 def create_slides(texfile):
-    slide_name = "%s%%d.tex" % args.prefix
+    slide_name = "%s/%%s.tex" % args.prefix
 
     try:
         tex = open(texfile).read().split("\n")
@@ -192,7 +216,20 @@ def create_slides(texfile):
 
     header, footer, slides = parse_slides(tex)
 
-    slide_changed = [(args.force or has_changed(header + slides[i] + footer, slide_name % i)) for i in range(len(slides))]
+    slide_hashes = [slide_hash(header + slides[i] + footer) for i in range(len(slides))]
+
+    saved_hashes = os.listdir(args.prefix)
+
+    for h in saved_hashes:
+        try:
+            hash_only = h.split(".")[0]
+            if hash_only not in slide_hashes:
+                os.remove(os.path.join(args.prefix, h))
+        except:
+            pass
+
+
+    slide_changed = [(args.force or has_changed(header + slides[i] + footer, slide_name % slide_hashes[i], (slide_name % slide_hashes[i]).replace(".tex", ".pdf"))) for i in range(len(slides))]
 
     up_to_date = True
 
@@ -200,7 +237,7 @@ def create_slides(texfile):
     for i, slide in enumerate(slides):
         if slide_changed[i]:
             up_to_date = False
-            recompile.append((header, footer, slide, slide_name % i, (slide_name % i).replace(".tex", ".pdf")))
+            recompile.append((header, footer, slide, slide_name % slide_hashes[i], (slide_name % slide_hashes[i]).replace(".tex", ".pdf")))
 
     logger.info("Compiling on %d cores (change with --smp <cores>)" % args.smp)
     with multiprocessing.Pool(args.smp) as p:
@@ -209,7 +246,7 @@ def create_slides(texfile):
     if up_to_date:
         logger.info("Everything is up to date, no recompilation required")
 
-    merge_slides(len(slides), slide_name)
+    merge_slides(slide_hashes, slide_name)
 
 
 class SlideWatch(FileSystemEventHandler):
@@ -233,6 +270,9 @@ def main():
     args = parser.parse_args()
 
     texfile = args.slides
+
+    if not os.path.exists(args.prefix):
+        os.makedirs(args.prefix)
 
     if args.watch:
         event_handler = SlideWatch()
