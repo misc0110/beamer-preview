@@ -82,10 +82,11 @@ def fatal(msg):
     raise AbortException()
 
 
-def error(msg):
+def error(msg, exception=None):
     logger.error(msg)
     if not args.ignore_errors:
-        raise AbortException()
+        if not exception:
+            raise AbortException()
 
 
 def parse_slides(tex):
@@ -202,8 +203,8 @@ def merge_slides(hashes, slide_name):
         try:
             with open(args.out, "wb") as pdf:
                 merger.write(pdf)
-        except:
-            error("Could not write %s" % args.out)
+        except Exception as e:
+            error("Could not write %s" % args.out, e)
 
 
 def create_slides(texfile):
