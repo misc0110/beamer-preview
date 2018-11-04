@@ -41,4 +41,15 @@ pip3 install -r requirements.txt
 
 # Features
 
+* Automatically extract single slides from a presentation
+* Compile only changed and new slides
+* Copes with re-ordering, insertion, and deletion of slides without requiring recompilation
+* Parallelize slide compilation
+* Watch file system for changes
+* Rudimentary syntax checks
+
 # Limitations / Known Issues
+
+* Page numbers on slides are always 1
+* No support for citations / bibliography
+* Commands between frame environments are not taken into account
