@@ -26,6 +26,19 @@ The tool supports several command-line parameters:
 --compiler-option [option] | Option passed to the compiler (can be provided multiple times)
 --runs [count] | Number of compilation runs per slide (default: 1)
 
+# Requirements
+
+LaTeX Beamer Preview relies on Python 3 and the following libraries
+
+* pypdf2
+* colorlog
+* watchdog
+
+The requirements can be installed by running 
+```
+pip3 install -r requirements.txt
+```
+
 # Features
 
 # Limitations / Known Issues
