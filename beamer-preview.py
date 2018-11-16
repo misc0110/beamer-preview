@@ -111,6 +111,8 @@ def parse_slides(tex):
             in_header = False
             if not in_slide:
                 slide = ""
+                if len(tex[i].strip()) == 0:
+                    error("frame without content at line %d" % (i + 1))
                 slides.append(tex[i] + "\n")
                 continue
             else:
@@ -119,6 +121,8 @@ def parse_slides(tex):
             in_header = False
             if not in_slide:
                 slide = ""
+                if len(tex[i].strip()) == 0:
+                    error("frame without content at line %d" % (i + 1))
                 slides.append(tex[i] + "\n")
                 continue
             else:
@@ -129,6 +133,8 @@ def parse_slides(tex):
             else:
                 in_slide = False
                 slide += tex[i] + "\n"
+                if len(slide.strip()) == 0:
+                    error("frame without content at line %d" % (i + 1))
                 slides.append(slide)
                 slide = ""
                 footer = ""
@@ -161,6 +167,8 @@ def compile_slide(arg):
     try:
         with open(tex, "w") as out:
             out.write(header)
+            if len(slide.strip()) == 0:
+                error("Empty slide (%s)" % tex)
             out.write(slide)
             out.write(footer)
     except:
@@ -182,6 +190,8 @@ def compile_slide(arg):
     if not os.path.isfile(pdf):
         logger.warning("Could not compile slide %s" % tex)
         logger.warning(log)
+        logger.warning("---- vvvvvvvvv ----")
+        logger.warning(open(tex).read())
         try:
             with open(tex, "w") as out:
                 out.write("")
