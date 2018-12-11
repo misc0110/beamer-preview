@@ -285,6 +285,8 @@ def main():
     if not os.path.exists(args.prefix):
         os.makedirs(args.prefix)
 
+    create_slides(args.slides)
+
     if args.watch:
         event_handler = SlideWatch()
         observer = Observer()
@@ -297,8 +299,6 @@ def main():
         except KeyboardInterrupt:
             observer.stop()
         observer.join()
-    else:
-        create_slides(args.slides)
 
 
 
