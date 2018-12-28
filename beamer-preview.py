@@ -256,8 +256,8 @@ def create_slides(texfile):
 
     if up_to_date:
         logger.info("Everything is up to date, no recompilation required")
-
-    merge_slides(slide_hashes, slide_name)
+    else:
+        merge_slides(slide_hashes, slide_name)
 
 
 class SlideWatch(FileSystemEventHandler):
