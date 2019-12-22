@@ -99,6 +99,12 @@ def parse_slides(tex):
     in_slide = False
 
     for i in range(len(tex)):
+        if re.match(r"\s*\\begin\s*\{\s*document\s*\}", tex[i]):
+            in_header = False
+            if not in_slide:
+                header += tex[i] + "\n"
+            continue
+
         if re.match(r"\s*\\begin\s*\{\s*frame\s*\}", tex[i]):
             in_header = False
             if not in_slide:
