@@ -1,0 +1,9 @@
+Package: beamer-preview
+Version: %VERSION%
+Section: devel
+Priority: optional
+Architecture: amd64
+Depends: python3-pypdf2, python3-colorlog, python3-watchdog, python3
+Maintainer: Michael Schwarz <michael.schwarz91@gmail.com>
+Description: LaTeX beamer-slide preview
+ Recompile only modified slides for LaTeX Beamer presentations in parallel.
