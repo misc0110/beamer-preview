@@ -1,0 +1,58 @@
+.TH BEAMER-PREVIEW 1
+.SH NAME
+beamer-preview \- A fast preview for LaTeX Beamer presentation slides
+.SH SYNOPSIS
+.B beamer-preview\fR [\fIoptions\fR] \fBslides\fR
+.SH DESCRIPTION
+.B beamer-preview\fR is a tool to recompile only modified slides for LaTeX Beamer presentations. The compilation for the individual slides is also parallelized to speed-up the process. 
+If the \fI\-\-watch\fR option is used, the LaTeX file is monitored for changes and the preview is regenerated as soon as a slide changes. 
+
+\fBbeamer-preview\fR splits the LaTeX file into a header, footer, and the individual slides. 
+Slides have to be defined using the default \fB\\begin{frame}\fR and \fB\\end{frame}\fR commands. Title slides defined using \fB\\maketitle\fR are also detected. 
+
+All individual slides are then compiled using the extracted header and footer, and only recompiled if the hash changes. Note that changing the header or footer triggeres the recompilation of all slides. 
+.SH OPTIONS
+.TP
+\fB\-o\fR, \fB\-\-out\fR \fIname\fR
+File name of the generated PDF. Default is \fIpreview.pdf\fR
+.TP
+\fB\-c\fR, \fB\-\-compiler\fR \fIcompiler\fR
+The LaTeX compiler used to compile the slides. Default is \fIpdflatex\fR. 
+.TP
+\fB\fB\-i\fR, \-\-ignore\-errors\fR
+Try to continue compilation when syntax errors are encountered
+.TP
+\fB\fB\-p\fR, \-\-prefix\fR \fIfolder\fR
+Store all intermediate and temporary files in the specified folder. The default folder is \fIbeamer.out\fR
+.TP
+\fB\-\-force\fR
+Force recompilation of all slides, even if the hash did not change.
+.TP
+\fB\-\-watch\fR
+Install a file-system watch on the LaTeX file to recompile modified slides as soon as the file content changes. 
+.TP
+\fB\-\-smp\fR \fIsmp\fR
+The number of threads that should be used for parallelizing the compile process. Defaults to the number of CPU cores. 
+.TP
+\fB\-\-compiler\-option\fR \fIoption [option ...]\fR
+Pass options to the LaTeX compiler. Options starting with a dash have to be masked, e.g., \fI\-\-compiler\-option "\\\-synctex=1"\fR
+.TP
+\fB\-r\fR, \fB\-\-runs\fR \fIruns\fR
+How often the LaTeX compiler should compile a slide. While the default value of \fI1\fR is usually sufficient, it can be necessary to increase this value, e.g., if certain layout calculations cannot be done in one run. 
+.SH BUGS
+\fBbeamer-preview\fR does not support slide numbers and bibliographies. Every slide has the page number 1, and a potential bibliography is not printed at all. 
+.SH EXAMPLES
+.TP 
+beamer-preview -o slides.pdf slides.tex
+Compile all slides in \fIslides.tex\fR to a preview presentation savaed as \fIslides.pdf\fR and exit afterwards.
+.TP
+beamer-preview --watch -i slides.tex
+Recompile a slide as soon as it changes, ignoring syntax errors (if possible)
+.SH SEE ALSO
+\fBpdflatex\fR(1), \fBlualatex\fR(1), \fBxelatex\fR(1), \fBlivetikz\fR(1)
+.SH COPYRIGHT
+Copyright 2020 Michael Schwarz <michael.schwarz91@gmail.com>
+
+This is free software; see the  source  for  copying  conditions.
+There  is  NO  warranty;  not  even  for
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
