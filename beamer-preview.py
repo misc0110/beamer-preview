@@ -167,8 +167,8 @@ def parse_slides(tex):
 
 
 def compile_slide(arg):
-    header, footer, slide, tex, pdf = arg
-    logger.info("Compiling slide %s" % (tex))
+    header, footer, slide, tex, pdf, nr = arg
+    logger.info("Compiling slide %d %s" % (nr, tex))
     FNULL = open(os.devnull, 'w')
     try:
         with open(tex, "w") as out:
@@ -251,12 +251,14 @@ def create_slides(texfile):
     up_to_date = True
 
     recompile = []
+    cnt = 0
     for i, slide in enumerate(slides):
         if slide_changed[i]:
             up_to_date = False
-            recompile.append((header, footer, slide, slide_name % slide_hashes[i], (slide_name % slide_hashes[i]).replace(".tex", ".pdf")))
+            cnt += 1
+            recompile.append((header, footer, slide, slide_name % slide_hashes[i], (slide_name % slide_hashes[i]).replace(".tex", ".pdf"), cnt))
 
-    logger.info("Compiling on %d cores (change with --smp <cores>)" % args.smp)
+    logger.info("Compiling %d slides on %d cores (change with --smp <cores>)" % (len(recompile), args.smp))
     with multiprocessing.Pool(args.smp) as p:
         p.map(compile_slide, tuple(recompile))
 
