@@ -49,7 +49,7 @@ def init_parser():
     parser.add_argument("--prefix", "-p", nargs="?", default="beamer.out")
     parser.add_argument("--force", action="store_true", default=False)
     parser.add_argument("--watch", action="store_true", default=False)
-    parser.add_argument("--smp", nargs="?", default=multiprocessing.cpu_count())
+    parser.add_argument("--smp", nargs="?", type=int, default=multiprocessing.cpu_count())
     parser.add_argument("--compiler-option", nargs="*", default=[], dest="compiler_option")
     parser.add_argument("--runs", "-r", nargs='?', default=1)
     parser.add_argument("slides")
@@ -97,6 +97,7 @@ def parse_slides(tex):
     slides = []
     in_header = True
     in_slide = False
+    slide_wrapper = False
 
     for i in range(len(tex)):
         if re.match(r"\s*\\begin\s*\{\s*document\s*\}", tex[i]):
@@ -105,10 +106,32 @@ def parse_slides(tex):
                 header += tex[i] + "\n"
             continue
 
-        if re.match(r"\s*\\begin\s*\{\s*frame\s*\}", tex[i]):
+        if re.match(r"\s*\{\s*", tex[i]):
+            if in_slide:
+                slide += tex[i] + "\n"
+                continue
+
+            slide_wrapper = True
+            slide = tex[i] + "\n"
+            continue
+        if re.match(r"\s*\}\s*", tex[i]):
+            if in_slide:
+                slide += tex[i] + "\n"
+                continue
+
+            if slide_wrapper:
+                slide += tex[i] + "\n"
+                slides.append(slide)
+                slide = ""
+                footer = ""
+                slide_wrapper = False
+            else:
+                error("Unexpected closing brackets at line %d" % (i + 1))
+
+        elif re.match(r"\s*\\begin\s*\{\s*frame\s*\}", tex[i]):
             in_header = False
             if not in_slide:
-                slide = tex[i] + "\n"
+                slide += tex[i] + "\n"
                 in_slide = True
                 continue
             else:
@@ -141,20 +164,21 @@ def parse_slides(tex):
                 slide += tex[i] + "\n"
                 if len(slide.strip()) == 0:
                     error("frame without content at line %d" % (i + 1))
-                slides.append(slide)
-                slide = ""
-                footer = ""
-                continue
+                if not slide_wrapper:
+                    slides.append(slide)
+                    slide = ""
+                    footer = ""
+                    continue
 
         else:
-            if in_slide:
+            if in_slide or slide_wrapper:
                 slide += tex[i] + "\n"
                 continue
 
-        if not in_slide and in_header:
+        if not in_slide and not slide_wrapper and in_header:
             header += tex[i] + "\n"
             continue
-        elif not in_slide and not in_header:
+        elif not in_slide and not slide_wrapper and not in_header:
             footer += tex[i] + "\n"
             continue
 
