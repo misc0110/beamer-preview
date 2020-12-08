@@ -101,11 +101,12 @@ def parse_slides(tex):
     header = tex_string[0:header_node.pos]
     header += begin_document_string
 
-    slides = []
+    slides = [""]
     footer = ""
 
     # get other nodes
     (nodelist, pos, len_) = w.get_latex_nodes(pos=header_node.pos + len(begin_document_string))
+    slide_idx = 0
 
     for x in range(len(nodelist)):
         node = nodelist[x]
@@ -115,14 +116,17 @@ def parse_slides(tex):
                 slides.append(
                     tex_string[node.pos:node.pos+node.len]
                 )
+                slide_idx += 1
         elif isinstance(node, LatexGroupNode):
             if node.delimiters == ('{', '}'):
-                slides.append(
-                    tex_string[node.pos:node.pos+node.len]
-                )
+                node_tex = tex_string[node.pos:node.pos+node.len]
+                if node_tex.find("frame") != -1:
+                    slides.append(node_tex)
+                    slide_idx += 1
+                else:
+                    slides[slide_idx] += node_tex
         else:
-            if (len(slides)):
-                slides[len(slides)-1] += tex_string[node.pos:node.pos+node.len]
+            slides[slide_idx] += tex_string[node.pos:node.pos+node.len]
 
     footer += "\\end{document}"
 
