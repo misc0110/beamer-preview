@@ -13,7 +13,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from subprocess import Popen, STDOUT, PIPE
 from PyPDF2 import PdfFileMerger
-from pylatexenc.latexwalker import LatexWalker, LatexEnvironmentNode, LatexGroupNode
+from pylatexenc.latexwalker import LatexWalker, LatexEnvironmentNode, LatexGroupNode, LatexMacroNode
 
 logger = None
 args = None
@@ -108,6 +108,13 @@ def parse_slides(tex):
     (nodelist, pos, len_) = w.get_latex_nodes(pos=header_node.pos + len(begin_document_string))
     slide_idx = 0
 
+    # own-slide macros
+    single_slide_macros = [
+        'fullFrameMovie',
+        'fullFrameImage',
+        'fullFrameImageZoomed'
+    ]
+
     for x in range(len(nodelist)):
         node = nodelist[x]
 
@@ -125,6 +132,11 @@ def parse_slides(tex):
                     slide_idx += 1
                 else:
                     slides[slide_idx] += node_tex
+        elif isinstance(node, LatexMacroNode):
+            if node.macroname in single_slide_macros:
+                node_tex = tex_string[node.pos:node.pos+node.len]
+                slides.append(node_tex)
+                slide_idx += 1
         else:
             slides[slide_idx] += tex_string[node.pos:node.pos+node.len]
 
