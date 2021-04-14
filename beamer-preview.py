@@ -193,10 +193,16 @@ def merge_slides(hashes, slide_name):
 def create_slides(texfile):
     slide_name = "%s/%%s.tex" % args.prefix
 
-    try:
-        tex = open(texfile).read().split("\n")
-    except:
-        fatal("Could not open '%s'" % texfile)
+    retries = 3
+    while retries != 0:
+        try:
+            retries -= 1
+            tex = open(texfile).read().split("\n")
+        except:
+            if retries == 0:
+                fatal("Could not open '%s'" % texfile)
+            else:
+                time.sleep(0.3)
 
     header, footer, slides = parse_slides(tex)
 
