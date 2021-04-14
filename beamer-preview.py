@@ -115,12 +115,16 @@ def parse_slides(tex):
         'fullFrameImageZoomed'
     ]
 
+    # cache macros that are added inbetween
+    inbetween_macros = ""
+
     for x in range(len(nodelist)):
         node = nodelist[x]
 
         if isinstance(node, LatexEnvironmentNode):
             if node.environmentname == 'frame':
                 slides.append(
+                    inbetween_macros +
                     tex_string[node.pos:node.pos+node.len]
                 )
                 slide_idx += 1
@@ -128,15 +132,19 @@ def parse_slides(tex):
             if node.delimiters == ('{', '}'):
                 node_tex = tex_string[node.pos:node.pos+node.len]
                 if node_tex.find("frame") != -1:
-                    slides.append(node_tex)
+                    slides.append(inbetween_macros + node_tex)
                     slide_idx += 1
                 else:
                     slides[slide_idx] += node_tex
         elif isinstance(node, LatexMacroNode):
+            node_tex = tex_string[node.pos:node.pos+node.len]
+
             if node.macroname in single_slide_macros:
-                node_tex = tex_string[node.pos:node.pos+node.len]
                 slides.append(node_tex)
                 slide_idx += 1
+            else:
+                inbetween_macros += node_tex
+                slides[slide_idx] += inbetween_macros
         else:
             slides[slide_idx] += tex_string[node.pos:node.pos+node.len]
 
