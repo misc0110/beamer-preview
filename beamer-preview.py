@@ -110,6 +110,7 @@ def parse_slides(tex):
 
     # own-slide macros
     single_slide_macros = [
+        'section',
         'maketitle',
         'imageslide',
         'fullFrameMovie',
