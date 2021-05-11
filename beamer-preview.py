@@ -13,6 +13,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from subprocess import Popen, STDOUT, PIPE
 from PyPDF2 import PdfFileMerger
+from pylatexenc.latexwalker import LatexWalker, LatexEnvironmentNode, LatexGroupNode, LatexMacroNode
 
 logger = None
 args = None
@@ -88,104 +89,69 @@ def error(msg, exception=None):
         if not exception:
             raise AbortException()
 
-
 def parse_slides(tex):
+    tex_string = "\n".join(tex)
+    w = LatexWalker(tex_string)
 
-    header = ""
+    # find header
+    begin_document_string = "\\begin{document}"
+    document_index = tex_string.find(begin_document_string)
+    (nodelist, pos, len_) = w.get_latex_nodes(pos=document_index)
+    header_node = nodelist[0]
+    header = tex_string[0:header_node.pos]
+    header += begin_document_string
+
+    slides = [""]
     footer = ""
-    slide = ""
-    slides = []
-    in_header = True
-    in_slide = False
-    slide_wrapper = False
 
-    for i in range(len(tex)):
-        if re.match(r"\s*\\begin\s*\{\s*document\s*\}", tex[i]):
-            in_header = False
-            if not in_slide:
-                header += tex[i] + "\n"
-            continue
+    # get other nodes
+    (nodelist, pos, len_) = w.get_latex_nodes(pos=header_node.pos + len(begin_document_string))
+    slide_idx = 0
 
-        if re.match(r"\s*\{\s*", tex[i]):
-            if in_slide:
-                slide += tex[i] + "\n"
-                continue
+    # own-slide macros
+    single_slide_macros = [
+        'section',
+        'maketitle',
+        'imageslide',
+        'fullFrameMovie',
+        'fullFrameImage',
+        'fullFrameImageZoomed'
+    ]
 
-            slide_wrapper = True
-            slide = tex[i] + "\n"
-            continue
-        if re.match(r"\s*\}\s*", tex[i]):
-            if in_slide:
-                slide += tex[i] + "\n"
-                continue
+    # cache macros that are added inbetween
+    inbetween_macros = ""
 
-            if slide_wrapper:
-                slide += tex[i] + "\n"
-                slides.append(slide)
-                slide = ""
-                footer = ""
-                slide_wrapper = False
+    for x in range(len(nodelist)):
+        node = nodelist[x]
+
+        if isinstance(node, LatexEnvironmentNode):
+            if node.environmentname == 'frame':
+                slides.append(
+                    inbetween_macros +
+                    tex_string[node.pos:node.pos+node.len]
+                )
+                slide_idx += 1
+        elif isinstance(node, LatexGroupNode):
+            if node.delimiters == ('{', '}'):
+                node_tex = tex_string[node.pos:node.pos+node.len]
+                if node_tex.find("frame") != -1:
+                    slides.append(inbetween_macros + node_tex)
+                    slide_idx += 1
+                else:
+                    slides[slide_idx] += node_tex
+        elif isinstance(node, LatexMacroNode):
+            node_tex = tex_string[node.pos:node.pos+node.len]
+
+            if node.macroname in single_slide_macros:
+                slides.append(node_tex)
+                slide_idx += 1
             else:
-                error("Unexpected closing brackets at line %d" % (i + 1))
-
-        elif re.match(r"\s*\\begin\s*\{\s*frame\s*\}", tex[i]):
-            in_header = False
-            if not in_slide:
-                slide += tex[i] + "\n"
-                in_slide = True
-                continue
-            else:
-                error("frame inside frame at line %d" % (i + 1))
-        elif re.match(r"\s*\\section\s*{\s*\w*", tex[i]):
-            in_header = False
-            if not in_slide:
-                slide = ""
-                if len(tex[i].strip()) == 0:
-                    error("frame without content at line %d" % (i + 1))
-                slides.append(tex[i] + "\n")
-                continue
-            else:
-                error("section inside frame at line %d" % (i + 1))
-        elif re.match(r"\s*\\maketitle", tex[i]):
-            in_header = False
-            if not in_slide:
-                slide = ""
-                if len(tex[i].strip()) == 0:
-                    error("frame without content at line %d" % (i + 1))
-                slides.append(tex[i] + "\n")
-                continue
-            else:
-                error("maketitle inside frame at line %d" % (i + 1))
-        elif re.match(r"\s*\\end\s*{\s*frame\s*}", tex[i]):
-            if not in_slide:
-                error("frame end without frame begin at line %d" % (i + 1))
-            else:
-                in_slide = False
-                slide += tex[i] + "\n"
-                if len(slide.strip()) == 0:
-                    error("frame without content at line %d" % (i + 1))
-                if not slide_wrapper:
-                    slides.append(slide)
-                    slide = ""
-                    footer = ""
-                    continue
-
+                inbetween_macros += node_tex
+                slides[slide_idx] += inbetween_macros
         else:
-            if in_slide or slide_wrapper:
-                slide += tex[i] + "\n"
-                continue
+            slides[slide_idx] += tex_string[node.pos:node.pos+node.len]
 
-        if not in_slide and not slide_wrapper and in_header:
-            header += tex[i] + "\n"
-            continue
-        elif not in_slide and not slide_wrapper and not in_header:
-            footer += tex[i] + "\n"
-            continue
-
-    if in_slide:
-        error("Missing frame end")
-    if in_header:
-        logger.warning("No slides found")
+    footer += "\\end{document}"
 
     return (header, footer, slides)
 
@@ -250,10 +216,16 @@ def merge_slides(hashes, slide_name):
 def create_slides(texfile):
     slide_name = "%s/%%s.tex" % args.prefix
 
-    try:
-        tex = open(texfile).read().split("\n")
-    except:
-        fatal("Could not open '%s'" % texfile)
+    retries = 3
+    while retries != 0:
+        try:
+            retries -= 1
+            tex = open(texfile).read().split("\n")
+        except:
+            if retries == 0:
+                fatal("Could not open '%s'" % texfile)
+            else:
+                time.sleep(0.3)
 
     header, footer, slides = parse_slides(tex)
 
