@@ -25,6 +25,7 @@ The tool supports several command-line parameters:
 --smp [cores] | Number of CPU cores to use for multithreaded compilation (default: number of currently available CPU cores)
 --compiler-option [option] | Option passed to the compiler (can be provided multiple times)
 --runs [count] | Number of compilation runs per slide (default: 1)
+--frames / -f | Use correct frame numbers, requires recompilation on insertion/deletion/reordering of slides (default: false)
 
 # Requirements
 
@@ -50,6 +51,5 @@ pip3 install -r requirements.txt
 
 # Limitations / Known Issues
 
-* Page numbers on slides are always 1
 * No support for citations / bibliography
 * Commands between frame environments are not taken into account

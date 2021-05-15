@@ -53,6 +53,7 @@ def init_parser():
     parser.add_argument("--smp", nargs="?", type=int, default=multiprocessing.cpu_count())
     parser.add_argument("--compiler-option", nargs="*", default=[], dest="compiler_option")
     parser.add_argument("--runs", "-r", nargs='?', default=1)
+    parser.add_argument("--frames", "-f", action="store_true", default=False)
     parser.add_argument("slides")
 
     return parser
@@ -211,17 +212,23 @@ def parse_slides(tex):
     return (header, footer, slides)
 
 
+def build_slide(header, slide, footer, nr = 1):
+    s = header
+    if args.frames: s += "\\addtocounter{framenumber}{%d}" % nr
+    s += slide
+    s += footer
+    return s
+
+
 def compile_slide(arg):
-    header, footer, slide, tex, pdf, nr = arg
+    header, footer, slide, tex, pdf, nr, idx = arg
     logger.info("Compiling slide %d %s" % (nr, tex))
     FNULL = open(os.devnull, 'w')
     try:
         with open(tex, "w") as out:
-            out.write(header)
             if len(slide.strip()) == 0:
                 error("Empty slide (%s)" % tex)
-            out.write(slide)
-            out.write(footer)
+            out.write(build_slide(header, slide, footer, idx))
     except:
         error("Could not write %s" % tex)
     if os.path.isfile(pdf):
@@ -280,7 +287,7 @@ def create_slides(texfile):
 
     header, footer, slides = parse_slides(tex)
 
-    slide_hashes = [slide_hash(header + slides[i] + footer) for i in range(len(slides))]
+    slide_hashes = [slide_hash(build_slide(header, slides[i], footer, i + 1)) for i in range(len(slides))]
 
     saved_hashes = os.listdir(args.prefix)
 
@@ -293,7 +300,7 @@ def create_slides(texfile):
             pass
 
 
-    slide_changed = [(args.force or has_changed(header + slides[i] + footer, slide_name % slide_hashes[i], (slide_name % slide_hashes[i]).replace(".tex", ".pdf"))) for i in range(len(slides))]
+    slide_changed = [(args.force or has_changed(build_slide(header, slides[i], footer, i + 1), slide_name % slide_hashes[i], (slide_name % slide_hashes[i]).replace(".tex", ".pdf"))) for i in range(len(slides))]
 
     up_to_date = True
 
@@ -303,7 +310,7 @@ def create_slides(texfile):
         if slide_changed[i]:
             up_to_date = False
             cnt += 1
-            recompile.append((header, footer, slide, slide_name % slide_hashes[i], (slide_name % slide_hashes[i]).replace(".tex", ".pdf"), cnt))
+            recompile.append((header, footer, slide, slide_name % slide_hashes[i], (slide_name % slide_hashes[i]).replace(".tex", ".pdf"), cnt, i + 1))
 
     logger.info("Compiling %d slides on %d cores (change with --smp <cores>)" % (len(recompile), args.smp))
     with multiprocessing.Pool(args.smp) as p:
