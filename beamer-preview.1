@@ -39,8 +39,11 @@ Pass options to the LaTeX compiler. Options starting with a dash have to be mask
 .TP
 \fB\-r\fR, \fB\-\-runs\fR \fIruns\fR
 How often the LaTeX compiler should compile a slide. While the default value of \fI1\fR is usually sufficient, it can be necessary to increase this value, e.g., if certain layout calculations cannot be done in one run. 
+.TP
+\fB\-f\fR, \fB\-\-frames\fR
+Fix the page numbers on the slides instead of always displaying 1. By default it is false, as this option requires recompilation on insertion/deletion/reordering of slides. 
 .SH BUGS
-\fBbeamer-preview\fR does not support slide numbers and bibliographies. Every slide has the page number 1, and a potential bibliography is not printed at all. 
+\fBbeamer-preview\fR does not support bibliographies. A potential bibliography is not printed at all. 
 .SH EXAMPLES
 .TP 
 beamer-preview -o slides.pdf slides.tex
@@ -51,7 +54,7 @@ Recompile a slide as soon as it changes, ignoring syntax errors (if possible)
 .SH SEE ALSO
 \fBpdflatex\fR(1), \fBlualatex\fR(1), \fBxelatex\fR(1), \fBlivetikz\fR(1)
 .SH COPYRIGHT
-Copyright 2020 Michael Schwarz <michael.schwarz91@gmail.com>
+Copyright 2021 Michael Schwarz <michael.schwarz91@gmail.com>
 
 This is free software; see the  source  for  copying  conditions.
 There  is  NO  warranty;  not  even  for
