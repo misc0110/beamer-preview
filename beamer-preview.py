@@ -95,17 +95,18 @@ def error(msg, exception=None):
             raise AbortException()
 
 
-class LstListingsParser(macrospec.MacroStandardArgsParser):
-    def __init__(self, **kwargs):
-        super(LstListingsParser, self).__init__(argspec='{', **kwargs)
+class EnvironmentRawParser(macrospec.MacroStandardArgsParser):
+    def __init__(self, environment_name, **kwargs):
+        super(EnvironmentRawParser, self).__init__(argspec='{', **kwargs)
+        self.environment_name = environment_name
 
     def parse_args(self, w, pos, parsing_state=None):
-        endverbpos = w.s.find(r'\end{lstlisting}', pos)
+        endverbpos = w.s.find(r'\end{' + self.environment_name + '}', pos)
         if endverbpos == -1:
             raise LatexWalkerParseError(
                 s=w.s,
                 pos=pos,
-                msg=r"Cannot find matching \end{lstlisting}"
+                msg=r"Cannot find matching \end{%s}" % (self.environment_name)
             )
         len_ = endverbpos-pos
 
@@ -119,8 +120,8 @@ class LstListingsParser(macrospec.MacroStandardArgsParser):
         return (argd, pos, len_)
 
     def __repr__(self):
-        return '{}'.format(
-            self.__class__.__name__
+        return '{}(environment_name={!r})'.format(
+            self.__class__.__name__, self.environment_name
         )
 
 
@@ -130,8 +131,8 @@ def parse_slides(tex):
     latex_context = get_default_latex_context_db()
     print(latex_context)
     latex_context.add_context_category('code', prepend=True, environments=[
-        macrospec.EnvironmentSpec('lstlisting', args_parser=LstListingsParser())
-    ])
+        macrospec.EnvironmentSpec('lstlisting', args_parser=EnvironmentRawParser('lstlisting'))
+    ], macros=[])
 
     w = LatexWalker(tex_string, latex_context=latex_context)
 
