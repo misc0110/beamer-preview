@@ -13,10 +13,15 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from subprocess import Popen, STDOUT, PIPE
 from PyPDF2 import PdfFileMerger
-from pylatexenc.latexwalker import LatexWalker, LatexEnvironmentNode, LatexGroupNode, LatexMacroNode
+from pylatexenc import macrospec
+from pylatexenc.latexwalker import (LatexWalker, LatexEnvironmentNode,
+                                    LatexGroupNode, LatexMacroNode,
+                                    LatexWalkerParseError, LatexCharsNode,
+                                    get_default_latex_context_db)
 
 logger = None
 args = None
+
 
 def init_logging():
     global logger
@@ -89,9 +94,46 @@ def error(msg, exception=None):
         if not exception:
             raise AbortException()
 
+
+class LstListingsParser(macrospec.MacroStandardArgsParser):
+    def __init__(self, **kwargs):
+        super(LstListingsParser, self).__init__(argspec='{', **kwargs)
+
+    def parse_args(self, w, pos, parsing_state=None):
+        endverbpos = w.s.find(r'\end{lstlisting}', pos)
+        if endverbpos == -1:
+            raise LatexWalkerParseError(
+                s=w.s,
+                pos=pos,
+                msg=r"Cannot find matching \end{lstlisting}"
+            )
+        len_ = endverbpos-pos
+
+        argd = macrospec.ParsedVerbatimArgs(
+            verbatim_chars_node=w.make_node(LatexCharsNode,
+                                            parsing_state=parsing_state,
+                                            chars=w.s[pos:pos+len_],
+                                            pos=pos,
+                                            len=len_)
+        )
+        return (argd, pos, len_)
+
+    def __repr__(self):
+        return '{}'.format(
+            self.__class__.__name__
+        )
+
+
 def parse_slides(tex):
     tex_string = "\n".join(tex)
-    w = LatexWalker(tex_string)
+
+    latex_context = get_default_latex_context_db()
+    print(latex_context)
+    latex_context.add_context_category('code', prepend=True, environments=[
+        macrospec.EnvironmentSpec('lstlisting', args_parser=LstListingsParser())
+    ])
+
+    w = LatexWalker(tex_string, latex_context=latex_context)
 
     # find header
     begin_document_string = "\\begin{document}"
