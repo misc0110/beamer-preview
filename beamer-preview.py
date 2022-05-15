@@ -215,7 +215,7 @@ def compile_slide(arg):
     if os.path.isfile(pdf):
         os.remove(pdf)
 
-    compile_command = [args.compiler, "--output-directory", args.prefix, "-halt-on-error"] + args.compiler_option + [tex]
+    compile_command = [args.compiler, "--output-directory", args.prefix, "-halt-on-error", "-interaction=nonstopmode"] + args.compiler_option + [tex]
     logger.debug(compile_command)
     log = ""
     for i in range(int(args.runs)):
