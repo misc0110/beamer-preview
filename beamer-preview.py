@@ -129,7 +129,6 @@ def parse_slides(tex):
     tex_string = "\n".join(tex)
 
     latex_context = get_default_latex_context_db()
-    print(latex_context)
     latex_context.add_context_category('code', prepend=True, environments=[
         macrospec.EnvironmentSpec('lstlisting', args_parser=EnvironmentRawParser('lstlisting'))
     ], macros=[])
@@ -186,7 +185,11 @@ def parse_slides(tex):
             node_tex = tex_string[node.pos:node.pos+node.len]
 
             if node.macroname in single_slide_macros:
-                slides.append(node_tex)
+                if slides[slide_idx].isspace():
+                    slides[slide_idx] = node_tex
+                    slides.append("")
+                else:
+                    slides.append(node_tex)
                 slide_idx += 1
             else:
                 inbetween_macros += node_tex
