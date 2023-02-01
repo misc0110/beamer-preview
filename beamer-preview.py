@@ -155,6 +155,8 @@ def parse_slides(tex):
         'section',
         'maketitle',
         'imageslide',
+        'fullimg',
+        'fullvideo',
         'fullFrameMovie',
         'fullFrameImage',
         'fullFrameImageZoomed'
